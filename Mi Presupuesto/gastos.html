@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gastos Diarios</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #c3f0f9, #d0ffe4);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2.2em;
+      color: #00796b;
+    }
+    .formulario, .acciones, #historial {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    input[type="text"], input[type="number"], input[type="search"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 1em;
+      border: 2px solid #ccc;
+      border-radius: 10px;
+    }
+    input.error {
+      border: 2px solid red;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 8px 5px;
+      background: #00796b;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.3s ease;
+    }
+    button:hover {
+      background: #004d40;
+      transform: scale(1.05);
+    }
+    .animacion {
+      text-align: center;
+      font-size: 1.2em;
+      margin-top: 10px;
+      animation: fadeOut 2s forwards;
+    }
+    .mensaje-error {
+      color: red;
+      font-size: 1em;
+      text-align: center;
+      margin-top: 10px;
+      animation: fadeOut 3s forwards;
+    }
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #e0f2f1;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dia {
+      margin-top: 20px;
+    }
+    .acciones input[type="search"] {
+      width: 100%;
+    }
+    .busqueda-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .busqueda-container button {
+      flex: 1;
+    }
+    #btnVolver {
+      background: #2196f3;
+    }
+    #btnVolver:hover {
+      background: #1976d2;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="titulo-gastos-dia">Gastos del Día</h1>
+
+  <div class="formulario">
+    <input type="text" id="nombre" placeholder="Nombre del gasto">
+    <input type="number" id="monto" placeholder="Monto del gasto">
+    <button id="btnAgregar">Agregar Gasto ➕</button>
+    <div id="animacionAgregar" class="animacion" style="display:none;">✅ Gasto agregado</div>
+  </div>
+
+  <div class="acciones">
+    <p><strong>Total del día:</strong> $<span id="total">0.00</span></p>
+    <button id="btnGuardar">Guardar Día 💾</button>
+    <button id="btnExportarPDF">Exportar Historial a PDF 📄</button>
+    <button id="btnExportarExcel">Exportar Historial a Excel 📊</button>
+    <input type="search" id="buscadorDia" placeholder="Buscar día por número...">
+    <div class="busqueda-container">
+      <button onclick="buscarDia()">Buscar 🔍</button>
+      <button onclick="borrarDiaBuscado()">Borrar Día 🗑️</button>
+    </div>
+    <div id="mensajeBorrar" class="mensaje-error" style="display:none;"></div>
+  </div>
+
+  <ul id="gastos-lista"></ul>
+  <div id="historial"></div>
+  <div style="text-align:center; margin-top:20px;">
+    <button id="btnVolver" onclick="location.href='index.html'">Volver al Menú Principal</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+
+  <script>
+    let historial = JSON.parse(localStorage.getItem("historial")) || [];
+    let fechaActual = new Date().toLocaleDateString("es-MX");
+    let gastosDiaActual = (historial.find(d => d.fecha === fechaActual) || {}).gastos || [];
+
+    function agregarGasto() {
+      const nombre = document.getElementById("nombre").value.trim();
+      const monto = parseFloat(document.getElementById("monto").value);
+      const nombreInput = document.getElementById("nombre");
+      const montoInput = document.getElementById("monto");
+      nombreInput.classList.remove("error");
+      montoInput.classList.remove("error");
+      if (nombre === "" || isNaN(monto) || monto <= 0) {
+        if (nombre === "") nombreInput.classList.add("error");
+        if (isNaN(monto) || monto <= 0) montoInput.classList.add("error");
+        return;
+      }
+      let dia = historial.find(d => d.fecha === fechaActual);
+      if (!dia) {
+        dia = { dia: historial.length + 1, fecha: fechaActual, gastos: [], total: 0 };
+        historial.push(dia);
+      }
+      dia.gastos.push({ nombre, monto });
+      dia.total = dia.gastos.reduce((sum, g) => sum + g.monto, 0);
+      gastosDiaActual = dia.gastos;
+      localStorage.setItem("historial", JSON.stringify(historial));
+      document.getElementById("nombre").value = "";
+      document.getElementById("monto").value = "";
+      document.getElementById("animacionAgregar").style.display = "block";
+      setTimeout(() => document.getElementById("animacionAgregar").style.display = "none", 2000);
+      actualizarVista();
+    }
+
+    function eliminarGasto(index) {
+      if (!confirm("¿Deseas eliminar este gasto?")) return;
+      let dia = historial.find(d => d.fecha === fechaActual);
+      if (!dia) return;
+      dia.gastos.splice(index, 1);
+      dia.total = dia.gastos.reduce((sum, g) => sum + g.monto, 0);
+      gastosDiaActual = dia.gastos;
+      localStorage.setItem("historial", JSON.stringify(historial));
+      actualizarVista();
+      // 🔄 Actualiza historial solo si se está mostrando el día actual
+      const historialDiv = document.getElementById("historial");
+      if (historialDiv.innerHTML.includes(fechaActual)) {
+        historialDiv.innerHTML = "";
+        mostrarDia(dia);
+      }
+    }
+
+    function guardarDia() {
+      if (gastosDiaActual.length === 0) return alert("Agrega al menos un gasto.");
+      alert("Gastos guardados correctamente.");
+    }
+
+    function buscarDia() {
+      const numero = parseInt(document.getElementById("buscadorDia").value);
+      const historialDiv = document.getElementById("historial");
+      historialDiv.innerHTML = "";
+      if (isNaN(numero)) return;
+      const diaBuscado = historial.find(d => d.dia === numero);
+      if (diaBuscado) mostrarDia(diaBuscado);
+      else historialDiv.innerHTML = "<p>No se encontró el día solicitado.</p>";
+    }
+
+    function borrarDiaBuscado() {
+      const numero = parseInt(document.getElementById("buscadorDia").value);
+      const mensaje = document.getElementById("mensajeBorrar");
+      if (isNaN(numero)) {
+        mensaje.textContent = "❗ Ingrese un número de día válido.";
+        mensaje.style.display = "block";
+        setTimeout(() => mensaje.style.display = "none", 2500);
+        return;
+      }
+      const diaEliminado = historial.find(d => d.dia === numero);
+      if (!diaEliminado) {
+        mensaje.textContent = "❌ Día no encontrado.";
+        mensaje.style.display = "block";
+        setTimeout(() => mensaje.style.display = "none", 2500);
+        return;
+      }
+      if (confirm(`¿Estás seguro de borrar completamente el Día ${numero}?`)) {
+        historial = historial.filter(d => d.dia !== numero);
+        localStorage.setItem("historial", JSON.stringify(historial));
+        if (diaEliminado.fecha === fechaActual) gastosDiaActual = [];
+        document.getElementById("historial").innerHTML = "<p>🗑️ Día eliminado exitosamente.</p>";
+        mensaje.textContent = "";
+        actualizarVista();
+      }
+    }
+
+    function actualizarVista() {
+      const lista = document.getElementById("gastos-lista");
+      const totalSpan = document.getElementById("total");
+      const titulo = document.getElementById("titulo-gastos-dia");
+      const diaHoy = historial.find(d => d.fecha === fechaActual);
+      if (diaHoy) {
+        gastosDiaActual = diaHoy.gastos;
+        titulo.textContent = `Gastos del Día ${diaHoy.dia} - ${diaHoy.fecha}`;
+      } else {
+        gastosDiaActual = [];
+        titulo.textContent = "Gastos del Día";
+      }
+      lista.innerHTML = "";
+      gastosDiaActual.forEach((g, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `${g.nombre}: $${g.monto.toFixed(2)} <button onclick="eliminarGasto(${index})">Eliminar</button>`;
+        lista.appendChild(li);
+      });
+      totalSpan.textContent = gastosDiaActual.reduce((sum, g) => sum + g.monto, 0).toFixed(2);
+    }
+
+    function mostrarDia(diaObj) {
+      const divDia = document.createElement("div");
+      divDia.classList.add("dia");
+      const h3 = document.createElement("h3");
+      h3.textContent = `Día ${diaObj.dia} - ${diaObj.fecha}`;
+      const ul = document.createElement("ul");
+      diaObj.gastos.forEach(g => {
+        const li = document.createElement("li");
+        li.textContent = `${g.nombre}: $${g.monto.toFixed(2)}`;
+        ul.appendChild(li);
+      });
+      const totalP = document.createElement("p");
+      totalP.innerHTML = `<strong>Total: $${diaObj.total.toFixed(2)}</strong>`;
+      divDia.appendChild(h3);
+      divDia.appendChild(ul);
+      divDia.appendChild(totalP);
+      document.getElementById("historial").appendChild(divDia);
+    }
+
+    function exportarHistorialPDF() {
+      if (historial.length === 0) return alert("No hay historial para exportar.");
+      let contenido = "";
+      historial.forEach(dia => {
+        contenido += `<h3>Día ${dia.dia} - ${dia.fecha}</h3><ul>`;
+        dia.gastos.forEach(g => {
+          contenido += `<li>${g.nombre}: $${g.monto.toFixed(2)}</li>`;
+        });
+        contenido += `</ul><p><strong>Total: $${dia.total.toFixed(2)}</strong></p><hr>`;
+      });
+      html2pdf().from(contenido).set({
+        margin: 0.5,
+        filename: "historial.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "in", format: "letter", orientation: "portrait" }
+      }).save();
+    }
+
+    function exportarHistorialExcel() {
+      if (historial.length === 0) return alert("No hay historial para exportar.");
+      const datos = [];
+      historial.forEach(dia => {
+        dia.gastos.forEach(g => {
+          datos.push({ Día: dia.fecha, Gasto: g.nombre, Monto: g.monto });
+        });
+        datos.push({ Día: dia.fecha, Gasto: "TOTAL", Monto: dia.total });
+        datos.push({});
+      });
+      const ws = XLSX.utils.json_to_sheet(datos);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Historial");
+      XLSX.writeFile(wb, "historial.xlsx");
+    }
+
+    document.getElementById("btnAgregar").addEventListener("click", agregarGasto);
+    document.getElementById("btnGuardar").addEventListener("click", guardarDia);
+    document.getElementById("btnExportarPDF").addEventListener("click", exportarHistorialPDF);
+    document.getElementById("btnExportarExcel").addEventListener("click", exportarHistorialExcel);
+
+    actualizarVista();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

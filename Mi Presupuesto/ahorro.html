@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mi Ahorro</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #2b5876, #4e4376);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      margin-top: 10px;
+      font-size: 2em;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: none;
+      font-size: 1em;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      background: linear-gradient(135deg, #00ff87, #60efff);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: linear-gradient(135deg, #00cc6a, #42caff);
+    }
+    button.bloqueado {
+      background: red !important;
+      color: white;
+    }
+    .progress {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      background: url('cerdito.png') no-repeat center;
+      background-size: contain;
+      margin: 20px 0;
+    }
+    .progress-fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0, 255, 136, 0.7);
+      transition: height 0.5s ease;
+      border-radius: 0 0 15px 15px;
+    }
+    .mensaje, .faltante {
+      text-align: center;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    #historial {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .billetes-img {
+      position: fixed;
+      top: -100px;
+      width: 50px;
+      animation: caer 3s linear forwards;
+      z-index: 9999;
+    }
+    @keyframes caer {
+      0% { top: -100px; opacity: 1; transform: rotate(0deg); }
+      100% { top: 100%; opacity: 0; transform: rotate(360deg); }
+    }
+    .vaciar-btn {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>💰 Mi Ahorro</h1>
+  <div class="container">
+    <div>
+      <input type="number" id="meta" placeholder="Ingresa tu meta de ahorro">
+      <button onclick="fijarMeta()">Fijar Meta</button>
+    </div>
+    <div>
+      <input type="number" id="cantidad" placeholder="Ingresa cantidad a ahorrar">
+      <button id="btnAgregar" onclick="agregarAhorro()">Agregar Ahorro</button>
+    </div>
+    <div class="faltante" id="faltanteTexto"></div>
+    <div class="mensaje" id="mensaje"></div>
+    <div class="progress">
+      <div class="progress-fill" id="progreso" style="height: 0%"></div>
+    </div>
+
+    <button id="vaciarBtn" class="vaciar-btn" onclick="reiniciarMeta()">🔄 Vaciar Ahorros</button>
+    <button onclick="exportarPDF()">Exportar a PDF</button>
+    <button onclick="exportarExcel()">Exportar a Excel</button>
+    <button onclick="window.location.href='index.html'">Volver al Menú Principal</button>
+    <div id="historial"></div>
+  </div>
+
+  <script>
+    let meta = 0;
+    let ahorro = 0;
+    let historial = [];
+    const historialCompleto = [];
+
+    function fijarMeta() {
+      const metaInput = parseFloat(document.getElementById('meta').value);
+      if (metaInput > 0) {
+        meta = metaInput;
+        ahorro = 0;
+        historial = [];
+        document.getElementById('mensaje').textContent = 'Meta fijada. ¡Empieza a ahorrar!';
+        document.getElementById('vaciarBtn').style.display = 'none';
+        actualizarFaltante();
+        actualizarProgreso();
+        actualizarHistorial();
+        cambiarEstadoBotones(false);
+      }
+    }
+
+    function agregarAhorro() {
+      if (meta <= 0) return alert('Primero debes fijar una meta.');
+      if (ahorro >= meta) return;
+
+      const cantidad = parseFloat(document.getElementById('cantidad').value);
+      if (!cantidad || cantidad <= 0) return;
+
+      ahorro += cantidad;
+      if (ahorro > meta) ahorro = meta;
+
+      historial.push({ cantidad, fecha: new Date().toLocaleString() });
+      document.getElementById('cantidad').value = '';
+
+      if (ahorro >= meta) {
+        document.getElementById('mensaje').textContent = '🎉¡Felicitaciones! Has alcanzado tu meta.';
+        document.getElementById('vaciarBtn').style.display = 'block';
+        lanzarBilletes();
+        cambiarEstadoBotones(true);
+      } else {
+        document.getElementById('mensaje').textContent = `✨¡Buen trabajo! Has ahorrado $${cantidad.toFixed(2)}`;
+      }
+
+      actualizarFaltante();
+      actualizarProgreso();
+      actualizarHistorial();
+    }
+
+    function actualizarFaltante() {
+      const faltante = meta - ahorro;
+      const texto = faltante > 0
+        ? `Te faltan $${faltante.toFixed(2)} para alcanzar tu meta.`
+        : 'Meta alcanzada. Puedes vaciar y empezar otra.';
+      document.getElementById('faltanteTexto').textContent = texto;
+    }
+
+    function actualizarProgreso() {
+      const porcentaje = Math.min((ahorro / meta) * 100, 100);
+      document.getElementById('progreso').style.height = porcentaje + '%';
+    }
+
+    function actualizarHistorial() {
+      const div = document.getElementById('historial');
+      const bloques = historialCompleto.map(h =>
+        `<strong>Meta: $${h.meta}</strong><br>${h.historial.map(e => `• $${e.cantidad} - ${e.fecha}`).join('<br>')}`
+      ).join('<br><br>');
+      const actual = historial.length > 0
+        ? `<strong>Meta Actual: $${meta}</strong><br>${historial.map(h => `• $${h.cantidad.toFixed(2)} - ${h.fecha}`).join('<br>')}`
+        : '';
+      div.innerHTML = `${actual}<br><br>${bloques}`;
+    }
+
+    function lanzarBilletes() {
+      for (let i = 0; i < 20; i++) {
+        const img = document.createElement('img');
+        img.src = 'https://i.imgur.com/o3gS4Xg.png';
+        img.className = 'billetes-img';
+        img.style.left = Math.random() * 90 + '%';
+        document.body.appendChild(img);
+        setTimeout(() => img.remove(), 3000);
+      }
+    }
+
+    function reiniciarMeta() {
+      lanzarBilletes();
+      alert('🎉 Gastos vaciados, felicidades por ese ahorro. Ingresa una nueva meta si lo requieres.');
+      historialCompleto.unshift({ meta, historial });
+      meta = 0;
+      ahorro = 0;
+      historial = [];
+
+      // Limpiar inputs
+      document.getElementById('meta').value = '';
+      document.getElementById('cantidad').value = '';
+
+      document.getElementById('mensaje').textContent = '';
+      document.getElementById('faltanteTexto').textContent = '';
+      document.getElementById('vaciarBtn').style.display = 'none';
+      actualizarProgreso();
+      actualizarHistorial();
+      cambiarEstadoBotones(false);
+    }
+
+    function cambiarEstadoBotones(bloquear) {
+      const btn = document.getElementById('btnAgregar');
+      btn.disabled = bloquear;
+      if (bloquear) {
+        btn.classList.add('bloqueado');
+      } else {
+        btn.classList.remove('bloqueado');
+      }
+    }
+
+    function exportarPDF() {
+  let contenido = '';
+
+  // Historial actual
+  if (historial.length > 0) {
+    contenido += `Meta actual: $${meta}\n`;
+    historial.forEach(h => {
+      contenido += `• $${h.cantidad} - ${h.fecha}\n`;
+    });
+    contenido += '\n';
+  }
+
+  // Historial completo
+  historialCompleto.forEach((registro, index) => {
+    contenido += `Meta anterior ${index + 1}: $${registro.meta}\n`;
+    registro.historial.forEach(e => {
+      contenido += `• $${e.cantidad} - ${e.fecha}\n`;
+    });
+    contenido += '\n';
+  });
+
+  // Mostrar y exportar
+  const w = window.open('', '', 'width=800,height=600');
+  w.document.write('<pre>' + contenido + '</pre>');
+  w.document.close();
+  w.print();
+}
+
+    function exportarExcel() {
+  let csv = 'Meta,Cantidad,Fecha\n';
+
+  // Historial actual
+  if (historial.length > 0) {
+    historial.forEach(h => {
+      csv += `${meta},${h.cantidad},${h.fecha}\n`;
+    });
+  }
+
+  // Historial completo
+  historialCompleto.forEach(registro => {
+    registro.historial.forEach(e => {
+      csv += `${registro.meta},${e.cantidad},${e.fecha}\n`;
+    });
+  });
+
+  // Exportar como CSV
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ahorro.csv';
+  a.click();
+}
+  </script>
+</body>
+</html>

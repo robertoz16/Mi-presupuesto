@@ -1,0 +1,103 @@
+<!DOCTYPE html><html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Calculadora de Ahorro</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: linear-gradient(to right, #e0f7fa, #ffffff);
+    }.calculadora {
+  background-color: #ffffff;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  animation: fadeIn 1s ease-in-out;
+}
+
+input, select, button {
+  margin: 1rem;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+button {
+  background-color: #00bcd4;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.05);
+}
+
+#resultado {
+  font-size: 1.5rem;
+  margin-top: 1rem;
+  color: #00796b;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+  </style>
+</head>
+<body>
+  <div class="calculadora">
+    <h1>Calculadora de Ahorro</h1>
+    <input type="number" id="cantidad" placeholder="¿Cuánto vas a ahorrar por día?">
+    <select id="dias">
+      <option value="30">30 días</option>
+      <option value="60">60 días</option>
+      <option value="80">80 días</option>
+      <option value="100">100 días</option>
+    </select>
+    <br>
+    <button onclick="calcularAhorro()">Calcular</button>
+    <p id="resultado"></p>
+    <button onclick="window.location.href='index.html'">Volver a la pantalla principal</button>
+  </div>  <!-- Librería de confetti animado -->  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>  <script>
+    function calcularAhorro() {
+      const cantidad = parseFloat(document.getElementById('cantidad').value);
+      const dias = parseInt(document.getElementById('dias').value);
+
+      if (isNaN(cantidad) || cantidad <= 0) {
+        alert("Por favor ingresa una cantidad válida");
+        return;
+      }
+
+      const total = cantidad * dias;
+      const resultado = `✨¡Felicidades! Si ahorras $${cantidad.toFixed(2)} durante ${dias} días, tendrás $${total.toFixed(2)}.✨`;
+      document.getElementById('resultado').textContent = resultado;
+
+      // Confetti cayendo
+      const duration = 2 * 1000;
+      const end = Date.now() + duration;
+
+      (function frame() {
+        confetti({
+          particleCount: 5,
+          angle: 90,
+          spread: 160,
+          origin: { x: Math.random(), y: 0 },
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      })();
+    }
+  </script></body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Calendario Compacto</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1CB5E0, #000851);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    .calendario {
+      background: #fff;
+      color: #333;
+      border-radius: 15px;
+      box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      width: 320px;
+      animation: fadein 0.6s ease;
+      position: relative;
+    }
+
+    @keyframes fadein {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mes {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .boton {
+      background: #1CB5E0;
+      border: none;
+      padding: 5px 8px;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    .boton:hover {
+      background-color: #0d8abf;
+      transform: scale(1.05);
+    }
+
+    .nombres-dias, .dias {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    .dias {
+      min-height: 280px;
+    }
+
+    .nombres-dias div {
+      text-align: center;
+      font-weight: bold;
+      font-size: 11px;
+      color: #1CB5E0;
+    }
+
+    .dia {
+      padding: 6px;
+      background: #f0f0f0;
+      border-radius: 6px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      position: relative;
+      height: 45px;
+      overflow: hidden;
+    }
+
+    .dia:hover {
+      background: #1CB5E0;
+      color: white;
+    }
+
+    .hoy {
+      background: #ff6f61;
+      color: white;
+      box-shadow: 0 0 8px #ff6f61;
+    }
+
+    .evento {
+      font-size: 10px;
+      background: #1CB5E0;
+      color: white;
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .modal {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      color: #000;
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      z-index: 99;
+      width: 90%;
+      max-width: 300px;
+      display: none;
+    }
+
+    .modal textarea {
+      width: 100%;
+      padding: 4px;
+      font-size: 13px;
+    }
+
+    .modal button {
+      margin-top: 10px;
+      background: #1CB5E0;
+      color: white;
+      padding: 5px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .cerrar {
+      float: right;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .volver {
+      margin-top: 20px;
+      animation: bounce 1.2s ease;
+    }
+
+    @keyframes bounce {
+      0% { transform: scale(0.8); opacity: 0; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    .panel-recordatorios {
+      position: absolute;
+      top: -70px;
+      right: -30px;
+      background: #ffffff;
+      color: #000;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      width: 260px;
+      display: none;
+    }
+
+    .panel-recordatorios h4 {
+      margin: 0 0 10px 0;
+    }
+
+    .panel-recordatorios ul {
+      list-style: none;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .panel-recordatorios li {
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="calendario">
+    <div class="header">
+      <button class="boton" onclick="cambiarMes(-1)">◀</button>
+      <div class="mes" id="mes"></div>
+      <button class="boton" onclick="cambiarMes(1)">▶</button>
+    </div>
+
+    <button class="boton" style="position:absolute; top:-35px; right:-40px;" onclick="mostrarPanelRecordatorios()">Recordatorios</button>
+    <div class="panel-recordatorios" id="panelRecordatorios">
+      <h4>Todos los recordatorios</h4>
+      <ul id="listaRecordatorios"></ul>
+    </div>
+
+    <div class="nombres-dias">
+      <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+    </div>
+
+    <div class="dias" id="dias"></div>
+
+    <div class="modal" id="modal">
+      <div class="cerrar" onclick="cerrarModal()">×</div>
+      <h3 id="modal-fecha"></h3>
+      <textarea id="textoEvento" rows="4" placeholder="Recordatorio(s), uno por línea..."></textarea>
+      <div class="lista-eventos" id="listaEventos"></div>
+      <button onclick="guardarEvento()">Guardar</button>
+    </div>
+  </div>
+
+  <div class="volver">
+    <button class="boton" onclick="location.href='index.html'">Volver a menú principal</button>
+  </div>
+
+  <script>
+    const diasContenedor = document.getElementById("dias");
+    const mesContenedor = document.getElementById("mes");
+    const modal = document.getElementById("modal");
+    const modalFecha = document.getElementById("modal-fecha");
+    const textoEvento = document.getElementById("textoEvento");
+    const listaEventos = document.getElementById("listaEventos");
+    const panelRecordatorios = document.getElementById("panelRecordatorios");
+    const listaRecordatorios = document.getElementById("listaRecordatorios");
+
+    let fecha = new Date();
+    let fechaSeleccionada = null;
+
+    function renderizarCalendario() {
+      diasContenedor.innerHTML = "";
+      const año = fecha.getFullYear();
+      const mes = fecha.getMonth();
+      const hoy = new Date();
+      const hoyDia = hoy.getDate();
+      const hoyMes = hoy.getMonth();
+      const hoyAño = hoy.getFullYear();
+      const nombreMes = fecha.toLocaleString("es-MX", { month: "long" });
+      mesContenedor.textContent = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1) + " " + año;
+      let primerDiaMes = new Date(año, mes, 1).getDay();
+      primerDiaMes = primerDiaMes === 0 ? 6 : primerDiaMes - 1;
+      const diasEnMes = new Date(año, mes + 1, 0).getDate();
+
+      for (let i = 0; i < primerDiaMes; i++) {
+        diasContenedor.appendChild(document.createElement("div"));
+      }
+
+      for (let i = 1; i <= diasEnMes; i++) {
+        const div = document.createElement("div");
+        div.textContent = i;
+        div.classList.add("dia");
+        const clave = `${año}-${mes + 1}-${i}`;
+        const evento = localStorage.getItem(clave);
+        if (evento) {
+          const e = document.createElement("div");
+          e.classList.add("evento");
+          e.textContent = "🔔";
+          div.appendChild(e);
+        }
+        if (i === hoyDia && mes === hoyMes && año === hoyAño) {
+          div.classList.add("hoy");
+        }
+        div.onclick = () => abrirModal(clave, `${i}/${mes + 1}/${año}`, evento);
+        diasContenedor.appendChild(div);
+      }
+    }
+
+    function cambiarMes(valor) {
+      fecha.setMonth(fecha.getMonth() + valor);
+      renderizarCalendario();
+    }
+
+    function abrirModal(clave, fechaStr, eventoPrevio) {
+      fechaSeleccionada = clave;
+      modalFecha.textContent = "Recordatorios: " + fechaStr;
+      textoEvento.value = eventoPrevio || "";
+      if (eventoPrevio) {
+        const eventosArray = eventoPrevio.split("\n");
+        listaEventos.innerHTML = "<strong>Guardados:</strong><ul>" + eventosArray.map(e => `<li>${e}</li>`).join('') + "</ul>";
+      } else {
+        listaEventos.innerHTML = "<em>Sin recordatorios.</em>";
+      }
+      modal.style.display = "block";
+    }
+
+    function cerrarModal() {
+      modal.style.display = "none";
+    }
+
+    function guardarEvento() {
+      if (fechaSeleccionada) {
+        const texto = textoEvento.value.trim();
+        if (texto) {
+          localStorage.setItem(fechaSeleccionada, texto);
+        } else {
+          localStorage.removeItem(fechaSeleccionada);
+        }
+        cerrarModal();
+        renderizarCalendario();
+      }
+    }
+
+    function mostrarPanelRecordatorios() {
+      if (panelRecordatorios.style.display === "block") {
+        panelRecordatorios.style.display = "none";
+        return;
+      }
+
+      listaRecordatorios.innerHTML = "";
+      const claves = Object.keys(localStorage);
+      const fechas = claves.filter(k => /^\d{4}-\d{1,2}-\d{1,2}$/.test(k));
+
+      // Mostrarlos según orden de ingreso, no orden cronológico
+      fechas.forEach(clave => {
+        const eventos = localStorage.getItem(clave).split("\n");
+        eventos.forEach((ev, idx) => {
+          if (ev.trim() === "") return;
+          const li = document.createElement("li");
+          const [a, m, d] = clave.split("-");
+          li.innerHTML = `${d}/${m}/${a}: ${ev} <button style="float:right;" onclick="eliminarRecordatorio('${clave}', ${idx})">❌</button>`;
+          listaRecordatorios.appendChild(li);
+        });
+      });
+
+      panelRecordatorios.style.display = "block";
+    }
+
+    function eliminarRecordatorio(clave, index) {
+      const eventos = localStorage.getItem(clave).split("\n");
+      eventos.splice(index, 1);
+      if (eventos.length === 0 || eventos.every(e => e.trim() === "")) {
+        localStorage.removeItem(clave);
+      } else {
+        localStorage.setItem(clave, eventos.join("\n"));
+      }
+      renderizarCalendario();
+      mostrarPanelRecordatorios();
+    }
+
+    renderizarCalendario();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
